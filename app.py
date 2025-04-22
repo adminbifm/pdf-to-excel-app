@@ -5,7 +5,7 @@ import re
 from io import BytesIO
 from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.styles import Font
+from openpyxl.styles import Font, Alignment, PatternFill
 
 # Función principal de extracción
 def extraer_datos(pdf_file):
@@ -55,7 +55,7 @@ def extraer_datos(pdf_file):
     return df_final
 
 # Interfaz web
-st.title("📄 Convertidor de Declaraciones PDF a Excel - BI")
+st.title("📄 Convertidor de Declaraciones PDF a Excel")
 
 pdf_file = st.file_uploader("Sube tu declaración en PDF", type=["pdf"])
 
@@ -90,14 +90,19 @@ if pdf_file is not None:
 
     # Crear hoja Decisioning
     ws2 = wb.create_sheet("Decisioning")
+    
+    # Título
     ws2["B1"] = "Knockout Rules"
     ws2["B1"].font = Font(bold=True, size=14)
-
+    
+    # Cabeceras en B3:F3
     headers = ["Sr No", "Parameters", "Criteria", "Actual Values", "Pass/Fail"]
+    ws2.append([""])  # Fila 2 vacía para llegar a B3
     ws2.append([""] + headers)
-
+    
+    # Datos (a partir de B4)
     contenido = [
-        [1, "Minimum Annual revenue $5,000,000", ">=$200,000", ingresos, '=SI(E4>=200000,"Pass","Fail")'],
+        [1, "Minimum Annual revenue $5,000,000", ">=\$200,000", ingresos, '=SI(E4>=200000,"Pass","Fail")'],
         [2, "Negative bank balance days in the last 6 months", "<=5", "No se cuenta con la información", ""],
         [3, "Liquidity Runway", ">=6 Months", round(activos_corr / pasivo, 2) if pasivo != 0 else "", '=SI(E6>=6,"Pass","Fail")'],
         [4, "If Tangible Net Worth is negative, business must be profitable", "N/A", patrimonio - intangibles, '=SI(E7>=0,"Pass","Fail")'],
@@ -108,16 +113,36 @@ if pdf_file is not None:
         [9, "Minimum Experian Intelliscore", "N/A", "", ""],
         [10, "Not delinquent on any Slope obligations or gone more than 15 days delinquent on any prior Slope obligations", "", "Aprobado Crédito", '=SI(E13="Aprobado Crédito","Pass","Fail")'],
     ]
-
+    
     for row in contenido:
         ws2.append([""] + row)
-
-    # Guardar en buffer
+    
+    # Ajustar anchos de columna
+    ws2.column_dimensions["C"].width = 62
+    ws2.column_dimensions["D"].width = 15.71
+    ws2.column_dimensions["E"].width = 31.57
+    
+    # Estilo para cabecera
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    
+    for cell in ws2["B3":"F3"][0]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_alignment
+    
+    # Alinear el resto de celdas a la izquierda
+    for row in ws2.iter_rows(min_row=4, min_col=2, max_col=6):
+        for cell in row:
+            cell.alignment = Alignment(horizontal="left")
+    
+    # Guardar en buffer final
     final_output = BytesIO()
     wb.save(final_output)
     final_output.seek(0)
-
-    # Botón de descarga
+    
+    # Descargar
     st.success("✅ Archivo procesado con éxito")
     st.download_button(
         label="📥 Descargar Excel",
