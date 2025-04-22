@@ -86,6 +86,30 @@ if pdf_file is not None:
             for col_idx, value in enumerate(row, start=1):
                 ws.cell(row=row_idx + 2, column=col_idx, value=value)
 
+
+
+        # Asegurar que la hoja "Decisioning" existe
+        if "Decisioning" in wb.sheetnames:
+            ws_decisioning = wb["Decisioning"]
+        
+            # Eliminar reglas previas si quieres
+            ws_decisioning.conditional_formatting.clear()
+        
+            # Estilo para "Pass"
+            fill_pass = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+            dxf_pass = DifferentialStyle(fill=fill_pass)
+            rule_pass = Rule(type="containsText", operator="containsText", text="Pass", dxf=dxf_pass)
+            rule_pass.formula = ['NOT(ISERROR(SEARCH("Pass",F4)))']
+            ws_decisioning.conditional_formatting.add("F4:F13", rule_pass)
+        
+            # Estilo para "Fail"
+            fill_fail = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+            dxf_fail = DifferentialStyle(fill=fill_fail)
+            rule_fail = Rule(type="containsText", operator="containsText", text="Fail", dxf=dxf_fail)
+            rule_fail.formula = ['NOT(ISERROR(SEARCH("Fail",F4)))']
+            ws_decisioning.conditional_formatting.add("F4:F13", rule_fail)
+
+
         # Guardar en memoria
         output = BytesIO()
         wb.save(output)
@@ -103,23 +127,3 @@ if pdf_file is not None:
 
 
 
-# Asegurar que la hoja "Decisioning" existe
-if "Decisioning" in wb.sheetnames:
-    ws_decisioning = wb["Decisioning"]
-
-    # Eliminar reglas previas si quieres
-    ws_decisioning.conditional_formatting.clear()
-
-    # Estilo para "Pass"
-    fill_pass = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
-    dxf_pass = DifferentialStyle(fill=fill_pass)
-    rule_pass = Rule(type="containsText", operator="containsText", text="Pass", dxf=dxf_pass)
-    rule_pass.formula = ['NOT(ISERROR(SEARCH("Pass",F4)))']
-    ws_decisioning.conditional_formatting.add("F4:F13", rule_pass)
-
-    # Estilo para "Fail"
-    fill_fail = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
-    dxf_fail = DifferentialStyle(fill=fill_fail)
-    rule_fail = Rule(type="containsText", operator="containsText", text="Fail", dxf=dxf_fail)
-    rule_fail.formula = ['NOT(ISERROR(SEARCH("Fail",F4)))']
-    ws_decisioning.conditional_formatting.add("F4:F13", rule_fail)
