@@ -57,7 +57,7 @@ def extraer_datos(pdf_file):
 # ----------------------------
 # URL del archivo SharePoint (con acceso público directo o sesión activa)
 # ----------------------------
-SHAREPOINT_URL = "https://ferremundoec.sharepoint.com/:x:/g/Ee35qtkB9slLiGQhDTk0494Bn3QvTMIODXsbgfJcw_78_Q?e=VSzzrd"
+SHAREPOINT_URL = "https://ferremundoec.sharepoint.com/:x:/g/Ee35qtkB9slLiGQhDTk0494Bn3QvTMIODXsbgfJcw_78_Q?e=FODsH1"
 
 # ----------------------------
 # Interfaz Streamlit
