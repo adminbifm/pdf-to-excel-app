@@ -86,7 +86,7 @@ if pdf_file is not None:
     pasivo = get_val(599)
     patrimonio = get_val(698)
     utilidad = get_val(701)
-    ganancia = next((row[3] for row in ws.iter_rows(min_row=2, values_only=True) if row[1] == "GB"), 0)
+    ganancia = next((row[2] for row in ws.iter_rows(min_row=2, values_only=True) if row[1] == "GB"), 0)
 
     # Crear hoja Decisioning
     ws2 = wb.create_sheet("Decisioning")
