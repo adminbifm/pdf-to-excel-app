@@ -7,7 +7,6 @@ from openpyxl import load_workbook
 from openpyxl.formatting import Rule
 from openpyxl.styles import PatternFill
 from openpyxl.styles.differential import DifferentialStyle
-from openpyxl.worksheet.datavalidation import DataValidation
 
 # Función para extraer los datos del PDF
 def extraer_datos(pdf_file):
@@ -56,9 +55,9 @@ def extraer_datos(pdf_file):
     return df_final
 
 # Interfaz Streamlit
-st.title("📄 Convertidor PDF a Excel - SRI PERSONA NATURAL")
+st.title("📄 Convertidor PDF a Excel con plantilla")
 
-pdf_file = st.file_uploader("Sube tu archivo en PDF", type=["pdf"])
+pdf_file = st.file_uploader("Sube tu declaración en PDF", type=["pdf"])
 
 if pdf_file is not None:
     st.info("Procesando archivo...")
@@ -86,29 +85,26 @@ if pdf_file is not None:
             for col_idx, value in enumerate(row, start=1):
                 ws.cell(row=row_idx + 2, column=col_idx, value=value)
 
-
-
-        # Asegurar que la hoja "Decisioning" existe
+        # ✅ Aplicar formato condicional en hoja Decisioning
         if "Decisioning" in wb.sheetnames:
-            ws_decisioning = wb["Decisioning"]
-        
-            # Eliminar reglas previas si quieres
-            ws_decisioning.conditional_formatting.clear()
-        
-            # Estilo para "Pass"
+            ws2 = wb["Decisioning"]
+
+            # Eliminar reglas anteriores si deseas reiniciar
+            ws2.conditional_formatting.clear()
+
+            # Estilo PASS
             fill_pass = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
             dxf_pass = DifferentialStyle(fill=fill_pass)
             rule_pass = Rule(type="containsText", operator="containsText", text="Pass", dxf=dxf_pass)
             rule_pass.formula = ['NOT(ISERROR(SEARCH("Pass",F4)))']
-            ws_decisioning.conditional_formatting.add("F4:F13", rule_pass)
-        
-            # Estilo para "Fail"
+            ws2.conditional_formatting.add("F4:F13", rule_pass)
+
+            # Estilo FAIL
             fill_fail = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
             dxf_fail = DifferentialStyle(fill=fill_fail)
             rule_fail = Rule(type="containsText", operator="containsText", text="Fail", dxf=dxf_fail)
             rule_fail.formula = ['NOT(ISERROR(SEARCH("Fail",F4)))']
-            ws_decisioning.conditional_formatting.add("F4:F13", rule_fail)
-
+            ws2.conditional_formatting.add("F4:F13", rule_fail)
 
         # Guardar en memoria
         output = BytesIO()
@@ -123,7 +119,3 @@ if pdf_file is not None:
             file_name="Slope Policy Output SRI PERSONA NATURAL.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
-
-
-
