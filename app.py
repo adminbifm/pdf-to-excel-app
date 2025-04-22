@@ -86,7 +86,7 @@ if pdf_file is not None:
     pasivo = get_val(599)
     patrimonio = get_val(698)
     utilidad = get_val(701)
-    ganancia = next((row[2] for row in ws.iter_rows(min_row=2, values_only=True) if row[1] == "GB"), 0)
+    ganancia = next((row[3] for row in ws.iter_rows(min_row=2, values_only=True) if row[1] == "GB"), 0)
 
     # Crear hoja Decisioning
     ws2 = wb.create_sheet("Decisioning")
@@ -97,7 +97,7 @@ if pdf_file is not None:
     ws2.append([""] + headers)
 
     contenido = [
-        [1, "Minimum Annual revenue $5,000,000", ">=\$200,000", ingresos, '=SI(E4>=200000,"Pass","Fail")'],
+        [1, "Minimum Annual revenue $5,000,000", ">=$200,000", ingresos, '=SI(E4>=200000,"Pass","Fail")'],
         [2, "Negative bank balance days in the last 6 months", "<=5", "No se cuenta con la información", ""],
         [3, "Liquidity Runway", ">=6 Months", round(activos_corr / pasivo, 2) if pasivo != 0 else "", '=SI(E6>=6,"Pass","Fail")'],
         [4, "If Tangible Net Worth is negative, business must be profitable", "N/A", patrimonio - intangibles, '=SI(E7>=0,"Pass","Fail")'],
