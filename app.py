@@ -52,9 +52,9 @@ def extraer_datos(pdf_file):
     return df_final
 
 # Interfaz de Streamlit
-st.title("📄 Convertidor PDF a Excel con plantilla")
+st.title("📄 Convertidor PDF a Excel - SRI PERSONA NATURAL")
 
-pdf_file = st.file_uploader("Sube tu declaración en PDF", type=["pdf"])
+pdf_file = st.file_uploader("Sube tu archivo del SRI en PDF", type=["pdf"])
 
 if pdf_file is not None:
     st.info("Procesando archivo...")
@@ -91,6 +91,6 @@ if pdf_file is not None:
     st.download_button(
         label="📥 Descargar Excel",
         data=output,
-        file_name="declaracion_convertida_con_plantilla.xlsx",
+        file_name="Slope Policy Output SRI PERSONA NATURAL.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
