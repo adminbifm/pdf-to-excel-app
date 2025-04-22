@@ -7,9 +7,10 @@ from openpyxl import load_workbook
 from openpyxl.formatting import Rule
 from openpyxl.styles import PatternFill
 from openpyxl.styles.differential import DifferentialStyle
-import pyodbc
 
+# ----------------------------
 # Función para extraer datos del PDF
+# ----------------------------
 def extraer_datos(pdf_file):
     cuentas_objetivo = [
         ("349", "TOTAL ACTIVOS CORRIENTES"),
@@ -44,7 +45,6 @@ def extraer_datos(pdf_file):
 
     df = pd.DataFrame(resultado, columns=["Descripción", "Código", "Valor"])
 
-    # Agregar cálculos adicionales
     valor_cuentas = df[df["Código"].isin(["314", "316", "318"])]["Valor"].sum()
     df_cxc = pd.DataFrame([["CUENTAS POR COBRAR", "CXC", valor_cuentas]], columns=df.columns)
     ingresos = df[df["Código"] == "6999"]["Valor"].sum()
@@ -54,62 +54,45 @@ def extraer_datos(pdf_file):
     df_final = pd.concat([df, df_cxc, df_gb], ignore_index=True)
     return df_final
 
-# Función para consultar SQL Server
-def obtener_datos_credito(cod_cliente):
-    conn = pyodbc.connect(
-        "DRIVER={ODBC Driver 17 for SQL Server};"
-        "SERVER=tu_servidor;"
-        "DATABASE=tu_base;"
-        "UID=tu_usuario;"
-        "PWD=tu_contraseña;"
-    )
-    query = """
-    SELECT 
-        COD_CUENTA_CLIENTE,
-        NOMBRE_CLIENTE,
-        CUPO_ACTUAL_CREDITO,
-        CUPO_DISPONIBLE,
-        ANIOS_ACT_ECONOMICA,
-        LETRA_EQUIFAX,
-        SCOREBURO_EQUIFAX,
-        SCORE_CREDITO,
-        DEUDA_TOTAL,
-        LETRA_FM,
-        ESTADO_CREDITO,
-        IDENTIFICACION,
-        BURO_EQUIFAX,
-        INDEX_PYMES_EQUIFAX,
-        app.KYC_Estado
-    FROM BI_DIM_CLIENTE clt
-    LEFT JOIN APP_FLUJO_CLIENTE_DETALLE app
-        ON clt.COD_CUENTA_CLIENTE = app.Cod_Cliente_AX
-    WHERE COD_CUENTA_CLIENTE = ?
-    """
-    df = pd.read_sql(query, conn, params=[cod_cliente])
-    conn.close()
-    return df
+# ----------------------------
+# URL del archivo SharePoint en formato de descarga
+# ----------------------------
+SHAREPOINT_URL = "https://ferremundoec.sharepoint.com/:x:/g/Ee35qtkB9slLiGQhDTk0494Bn3QvTMIODXsbgfJcw_78_Q?e=VSzzrd"
+DOWNLOAD_URL = SHAREPOINT_URL.replace(":x:/", "/_layouts/15/download.aspx?UniqueId=")
 
-# Interfaz Streamlit
-st.title("📄 Convertidor PDF a Excel con Datos de Crédito")
+# ----------------------------
+# App de Streamlit
+# ----------------------------
+st.title("📄 App de Crédito y Declaración")
 
-# Campos de entrada
 codigo_cliente = st.text_input("🔢 Ingresa el código del cliente")
-pdf_file = st.file_uploader("📄 Sube tu declaración en PDF", type=["pdf"])
+pdf_file = st.file_uploader("📄 Sube la declaración PDF", type=["pdf"])
 
 if pdf_file is not None and codigo_cliente:
-    st.info("Procesando archivo y consultando base de datos...")
+    st.info("Procesando archivo...")
 
-    # Extraer datos del PDF
+    # Leer archivo Excel desde SharePoint
+    try:
+        df_creditos = pd.read_excel(DOWNLOAD_URL)
+    except Exception as e:
+        st.error("❌ Error al leer el archivo desde SharePoint. Verifica el enlace o la conexión.")
+        st.stop()
+
+    # Filtrar el cliente
+    df_cliente = df_creditos[df_creditos["COD_CUENTA_CLIENTE"] == int(codigo_cliente)]
+
+    if df_cliente.empty:
+        st.warning("⚠️ Cliente no encontrado en la base.")
+        st.stop()
+
+    # Procesar PDF
     df_final = extraer_datos(pdf_file)
-
-    # Consultar datos de crédito
-    df_credito = obtener_datos_credito(codigo_cliente)
 
     # Cargar plantilla
     plantilla_path = "Plantilla.xlsx"
     wb = load_workbook(plantilla_path)
 
-    # Insertar en hoja DATA-BRUTO
+    # Actualizar hoja DATA-BRUTO
     if "DATA-BRUTO" in wb.sheetnames:
         ws = wb["DATA-BRUTO"]
         for row in ws.iter_rows(min_row=2, max_row=ws.max_row, max_col=3):
@@ -120,21 +103,20 @@ if pdf_file is not None and codigo_cliente:
                 ws.cell(row=row_idx + 2, column=col_idx, value=value)
 
     # Insertar en hoja CREDITO
-    if "CREDITO" in wb.sheetnames and not df_credito.empty:
-        ws_cred = wb["CREDITO"]
-        for row in ws_cred.iter_rows(min_row=2, max_row=ws_cred.max_row):
+    if "CREDITO" in wb.sheetnames:
+        ws_credito = wb["CREDITO"]
+        for row in ws_credito.iter_rows(min_row=2, max_row=ws_credito.max_row):
             for cell in row:
                 cell.value = None
-        for col_idx, col in enumerate(df_credito.columns, start=1):
-            ws_cred.cell(row=1, column=col_idx, value=col)
-        for row_idx, row in df_credito.iterrows():
+        for col_idx, col_name in enumerate(df_cliente.columns, start=1):
+            ws_credito.cell(row=1, column=col_idx, value=col_name)
+        for row_idx, row in df_cliente.iterrows():
             for col_idx, val in enumerate(row, start=1):
-                ws_cred.cell(row=row_idx + 2, column=col_idx, value=val)
+                ws_credito.cell(row=row_idx + 2, column=col_idx, value=val)
 
-    # Formato condicional en hoja Decisioning
+    # Formato condicional para hoja Decisioning
     if "Decisioning" in wb.sheetnames:
         ws2 = wb["Decisioning"]
-
         fill_pass = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
         dxf_pass = DifferentialStyle(fill=fill_pass)
         rule_pass = Rule(type="containsText", operator="containsText", text="Pass", dxf=dxf_pass)
@@ -147,7 +129,7 @@ if pdf_file is not None and codigo_cliente:
         rule_fail.formula = ['NOT(ISERROR(SEARCH("Fail",F4)))']
         ws2.conditional_formatting.add("F4:F13", rule_fail)
 
-    # Guardar archivo final
+    # Guardar y descargar
     output = BytesIO()
     wb.save(output)
     output.seek(0)
