@@ -89,9 +89,7 @@ if pdf_file is not None:
         if "Decisioning" in wb.sheetnames:
             ws2 = wb["Decisioning"]
 
-            # Eliminar reglas anteriores si deseas reiniciar
-            ws2.conditional_formatting.clear()
-
+        
             # Estilo PASS
             fill_pass = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
             dxf_pass = DifferentialStyle(fill=fill_pass)
