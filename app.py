@@ -55,34 +55,39 @@ def extraer_datos(pdf_file):
     return df_final
 
 # ----------------------------
-# URL del archivo SharePoint en formato de descarga
+# URL del archivo SharePoint (con acceso público directo o sesión activa)
 # ----------------------------
 SHAREPOINT_URL = "https://ferremundoec.sharepoint.com/:x:/g/Ee35qtkB9slLiGQhDTk0494Bn3QvTMIODXsbgfJcw_78_Q?e=VSzzrd"
-DOWNLOAD_URL = SHAREPOINT_URL.replace(":x:/", "/_layouts/15/download.aspx?UniqueId=")
 
 # ----------------------------
-# App de Streamlit
+# Interfaz Streamlit
 # ----------------------------
-st.title("📄 App de Crédito y Declaración")
+st.title("📄 App Declaración + Validación de Crédito")
 
 codigo_cliente = st.text_input("🔢 Ingresa el código del cliente")
-pdf_file = st.file_uploader("📄 Sube la declaración PDF", type=["pdf"])
+pdf_file = st.file_uploader("📄 Sube el PDF de declaración", type=["pdf"])
 
 if pdf_file is not None and codigo_cliente:
     st.info("Procesando archivo...")
 
-    # Leer archivo Excel desde SharePoint
+    # Leer Excel desde SharePoint
     try:
-        df_creditos = pd.read_excel(DOWNLOAD_URL)
+        df_creditos = pd.read_excel(SHAREPOINT_URL)
     except Exception as e:
-        st.error("❌ Error al leer el archivo desde SharePoint. Verifica el enlace o la conexión.")
+        st.error("❌ Error al leer el archivo desde SharePoint.")
         st.stop()
 
-    # Filtrar el cliente
-    df_cliente = df_creditos[df_creditos["COD_CUENTA_CLIENTE"] == int(codigo_cliente)]
+    # Filtrar cliente
+    try:
+        codigo_int = int(codigo_cliente)
+    except ValueError:
+        st.error("⚠️ El código debe ser numérico.")
+        st.stop()
+
+    df_cliente = df_creditos[df_creditos["COD_CUENTA_CLIENTE"] == codigo_int]
 
     if df_cliente.empty:
-        st.warning("⚠️ Cliente no encontrado en la base.")
+        st.warning("⚠️ Cliente no encontrado en la base de datos.")
         st.stop()
 
     # Procesar PDF
@@ -92,7 +97,9 @@ if pdf_file is not None and codigo_cliente:
     plantilla_path = "Plantilla.xlsx"
     wb = load_workbook(plantilla_path)
 
+    # ----------------------------
     # Actualizar hoja DATA-BRUTO
+    # ----------------------------
     if "DATA-BRUTO" in wb.sheetnames:
         ws = wb["DATA-BRUTO"]
         for row in ws.iter_rows(min_row=2, max_row=ws.max_row, max_col=3):
@@ -102,7 +109,9 @@ if pdf_file is not None and codigo_cliente:
             for col_idx, value in enumerate(row, start=1):
                 ws.cell(row=row_idx + 2, column=col_idx, value=value)
 
-    # Insertar en hoja CREDITO
+    # ----------------------------
+    # Actualizar hoja CREDITO
+    # ----------------------------
     if "CREDITO" in wb.sheetnames:
         ws_credito = wb["CREDITO"]
         for row in ws_credito.iter_rows(min_row=2, max_row=ws_credito.max_row):
@@ -114,7 +123,9 @@ if pdf_file is not None and codigo_cliente:
             for col_idx, val in enumerate(row, start=1):
                 ws_credito.cell(row=row_idx + 2, column=col_idx, value=val)
 
-    # Formato condicional para hoja Decisioning
+    # ----------------------------
+    # Formato condicional hoja Decisioning
+    # ----------------------------
     if "Decisioning" in wb.sheetnames:
         ws2 = wb["Decisioning"]
         fill_pass = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
@@ -129,7 +140,9 @@ if pdf_file is not None and codigo_cliente:
         rule_fail.formula = ['NOT(ISERROR(SEARCH("Fail",F4)))']
         ws2.conditional_formatting.add("F4:F13", rule_fail)
 
-    # Guardar y descargar
+    # ----------------------------
+    # Guardar y descargar archivo
+    # ----------------------------
     output = BytesIO()
     wb.save(output)
     output.seek(0)
