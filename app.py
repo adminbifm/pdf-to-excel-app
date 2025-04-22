@@ -5,7 +5,7 @@ import re
 from io import BytesIO
 from openpyxl import load_workbook
 
-# Función para extraer datos del PDF
+# Función para extraer los datos del PDF
 def extraer_datos(pdf_file):
     cuentas_objetivo = [
         ("349", "TOTAL ACTIVOS CORRIENTES"),
@@ -39,8 +39,8 @@ def extraer_datos(pdf_file):
                                 break
 
     df = pd.DataFrame(resultado, columns=["Descripción", "Código", "Valor"])
-    
-    # Cálculos adicionales
+
+    # Agregar cálculos adicionales
     valor_cuentas = df[df["Código"].isin(["314", "316", "318"])]["Valor"].sum()
     df_cxc = pd.DataFrame([["CUENTAS POR COBRAR", "CXC", valor_cuentas]], columns=df.columns)
 
@@ -51,46 +51,47 @@ def extraer_datos(pdf_file):
     df_final = pd.concat([df, df_cxc, df_gb], ignore_index=True)
     return df_final
 
-# Interfaz de Streamlit
-st.title("📄 Convertidor PDF a Excel - SRI PERSONA NATURAL")
+# Interfaz Streamlit
+st.title("📄 Convertidor PDF a Excel con plantilla")
 
-pdf_file = st.file_uploader("Sube tu archivo del SRI en PDF", type=["pdf"])
+pdf_file = st.file_uploader("Sube tu declaración en PDF", type=["pdf"])
 
 if pdf_file is not None:
     st.info("Procesando archivo...")
 
-    # Extraer los datos
+    # Extraer y preparar los datos
     df_final = extraer_datos(pdf_file)
 
-    # Cargar la plantilla Excel
-    plantilla_path = "Plantilla.xlsx"  # debe estar en el mismo directorio que app.py en GitHub
+    # Cargar plantilla base desde el mismo directorio
+    plantilla_path = "Plantilla.xlsx"  # debe estar en el mismo repositorio que app.py
     wb = load_workbook(plantilla_path)
 
-    # Si ya existe la hoja DATA-BRUTO, la borramos
-    if "DATA-BRUTO" in wb.sheetnames:
-        del wb["DATA-BRUTO"]
+    # Acceder a la hoja "DATA-BRUTO" sin eliminarla
+    if "DATA-BRUTO" not in wb.sheetnames:
+        st.error("La hoja 'DATA-BRUTO' no existe en la plantilla.")
+    else:
+        ws = wb["DATA-BRUTO"]
 
-    # Crear nueva hoja DATA-BRUTO
-    ws = wb.create_sheet("DATA-BRUTO")
+        # Limpiar contenido desde fila 2 (dejamos encabezados en fila 1)
+        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, max_col=3):
+            for cell in row:
+                cell.value = None
 
-    # Escribir encabezados
-    for col_idx, col_name in enumerate(df_final.columns, start=1):
-        ws.cell(row=1, column=col_idx, value=col_name)
+        # Escribir los datos en la hoja
+        for row_idx, row in df_final.iterrows():
+            for col_idx, value in enumerate(row, start=1):
+                ws.cell(row=row_idx + 2, column=col_idx, value=value)
 
-    # Escribir los valores
-    for row_idx, row in df_final.iterrows():
-        for col_idx, value in enumerate(row, start=1):
-            ws.cell(row=row_idx + 2, column=col_idx, value=value)
+        # Guardar en memoria
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
 
-    # Guardar en memoria
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-
-    st.success("✅ Archivo generado con éxito a partir de la plantilla")
-    st.download_button(
-        label="📥 Descargar Excel",
-        data=output,
-        file_name="Slope Policy Output SRI PERSONA NATURAL.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        # Descargar
+        st.success("✅ Archivo generado correctamente.")
+        st.download_button(
+            label="📥 Descargar Excel",
+            data=output,
+            file_name="Slope Policy Output SRI PERSONA NATURAL.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
