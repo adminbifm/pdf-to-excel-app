@@ -2,6 +2,8 @@ import streamlit as st
 import pdfplumber
 import pandas as pd
 import re
+import requests
+import io
 from io import BytesIO
 from openpyxl import load_workbook
 from openpyxl.formatting import Rule
@@ -55,9 +57,9 @@ def extraer_datos(pdf_file):
     return df_final
 
 # ----------------------------
-# URL del archivo SharePoint (con acceso público directo o sesión activa)
+# URL del archivo SharePoint
 # ----------------------------
-SHAREPOINT_URL = "https://ferremundoec.sharepoint.com/:x:/g/Ee35qtkB9slLiGQhDTk0494Bn3QvTMIODXsbgfJcw_78_Q?e=FODsH1"
+SHAREPOINT_URL = "https://ferremundoec.sharepoint.com/:x:/g/Ee35qtkB9slLiGQhDTk0494Bn3QvTMIODXsbgfJcw_78_Q?e=VSzzrd"
 
 # ----------------------------
 # Interfaz Streamlit
@@ -70,9 +72,14 @@ pdf_file = st.file_uploader("📄 Sube el PDF de declaración", type=["pdf"])
 if pdf_file is not None and codigo_cliente:
     st.info("Procesando archivo...")
 
-    # Leer Excel desde SharePoint
+    # Descargar archivo de Excel desde SharePoint con requests
     try:
-        df_creditos = pd.read_excel(SHAREPOINT_URL)
+        response = requests.get(SHAREPOINT_URL)
+        if response.status_code == 200:
+            df_creditos = pd.read_excel(io.BytesIO(response.content))
+        else:
+            st.error("❌ No se pudo descargar el archivo desde SharePoint.")
+            st.stop()
     except Exception as e:
         st.error("❌ Error al leer el archivo desde SharePoint.")
         st.stop()
