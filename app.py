@@ -59,7 +59,7 @@ def extraer_datos(pdf_file):
 # ----------------------------
 # URL del archivo SharePoint
 # ----------------------------
-SHAREPOINT_URL = "https://ferremundoec.sharepoint.com/_layouts/15/download.aspx?UniqueId=Ee35qtkB9slLiGQhDTk0494Bn3QvTMIODXsbgfJcw_78_Q?e=VSzzrd"
+SHAREPOINT_URL = "https://ferremundoec.sharepoint.com/Documentos%20compartidos/Credito.xlsx"
 
 # ----------------------------
 # Interfaz Streamlit
