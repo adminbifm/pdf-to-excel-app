@@ -55,7 +55,7 @@ def extraer_datos(pdf_file):
     return df_final
 
 # Interfaz web
-st.title("📄 Convertidor de Declaraciones PDF a Excel")
+st.title("📄 Convertidor de Declaraciones PDF a Excel - BI")
 
 pdf_file = st.file_uploader("Sube tu declaración en PDF", type=["pdf"])
 
