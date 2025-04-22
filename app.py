@@ -4,6 +4,10 @@ import pandas as pd
 import re
 from io import BytesIO
 from openpyxl import load_workbook
+from openpyxl.formatting import Rule
+from openpyxl.styles import PatternFill
+from openpyxl.styles.differential import DifferentialStyle
+from openpyxl.worksheet.datavalidation import DataValidation
 
 # Función para extraer los datos del PDF
 def extraer_datos(pdf_file):
@@ -95,3 +99,27 @@ if pdf_file is not None:
             file_name="Slope Policy Output SRI PERSONA NATURAL.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
+
+
+
+# Asegurar que la hoja "Decisioning" existe
+if "Decisioning" in wb.sheetnames:
+    ws_decisioning = wb["Decisioning"]
+
+    # Eliminar reglas previas si quieres
+    ws_decisioning.conditional_formatting.clear()
+
+    # Estilo para "Pass"
+    fill_pass = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    dxf_pass = DifferentialStyle(fill=fill_pass)
+    rule_pass = Rule(type="containsText", operator="containsText", text="Pass", dxf=dxf_pass)
+    rule_pass.formula = ['NOT(ISERROR(SEARCH("Pass",F4)))']
+    ws_decisioning.conditional_formatting.add("F4:F13", rule_pass)
+
+    # Estilo para "Fail"
+    fill_fail = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+    dxf_fail = DifferentialStyle(fill=fill_fail)
+    rule_fail = Rule(type="containsText", operator="containsText", text="Fail", dxf=dxf_fail)
+    rule_fail.formula = ['NOT(ISERROR(SEARCH("Fail",F4)))']
+    ws_decisioning.conditional_formatting.add("F4:F13", rule_fail)
