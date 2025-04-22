@@ -4,10 +4,8 @@ import pandas as pd
 import re
 from io import BytesIO
 from openpyxl import load_workbook
-from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.styles import Font, PatternFill, Alignment
 
-# Función principal de extracción
 def extraer_datos(pdf_file):
     cuentas_objetivo = [
         ("349", "TOTAL ACTIVOS CORRIENTES"),
@@ -41,20 +39,15 @@ def extraer_datos(pdf_file):
                                 break
 
     df = pd.DataFrame(resultado, columns=["Descripción", "Código", "Valor"])
-
-    # Cálculo de CUENTAS POR COBRAR
     valor_cuentas = df[df["Código"].isin(["314", "316", "318"])]["Valor"].sum()
     df_cxc = pd.DataFrame([["CUENTAS POR COBRAR", "CXC", valor_cuentas]], columns=df.columns)
-
-    # Cálculo de GANANCIA BRUTA
     ingresos = df[df["Código"] == "6999"]["Valor"].sum()
     costos = df[df["Código"] == "7991"]["Valor"].sum()
     df_gb = pd.DataFrame([["GANANCIA BRUTA", "GB", ingresos - costos]], columns=df.columns)
 
-    df_final = pd.concat([df, df_cxc, df_gb], ignore_index=True)
-    return df_final
+    return pd.concat([df, df_cxc, df_gb], ignore_index=True)
 
-# Interfaz web
+# App Streamlit
 st.title("📄 Convertidor de Declaraciones PDF a Excel")
 
 pdf_file = st.file_uploader("Sube tu declaración en PDF", type=["pdf"])
@@ -64,7 +57,7 @@ if pdf_file is not None:
 
     df_final = extraer_datos(pdf_file)
 
-    # Escribir hoja DATA-BRUTO
+    # Guardar hoja DATA-BRUTO
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df_final.to_excel(writer, sheet_name="DATA-BRUTO", index=False)
@@ -73,7 +66,7 @@ if pdf_file is not None:
     wb = load_workbook(output)
     ws = wb["DATA-BRUTO"]
 
-    # Obtener valores para cálculos
+    # Obtener valores desde la hoja
     def get_val(codigo):
         for row in ws.iter_rows(min_row=2, values_only=True):
             if str(row[1]) == str(codigo):
@@ -90,17 +83,14 @@ if pdf_file is not None:
 
     # Crear hoja Decisioning
     ws2 = wb.create_sheet("Decisioning")
-    
-    # Título
     ws2["B1"] = "Knockout Rules"
     ws2["B1"].font = Font(bold=True, size=14)
-    
-    # Cabeceras en B3:F3
+
     headers = ["Sr No", "Parameters", "Criteria", "Actual Values", "Pass/Fail"]
-    ws2.append([""])  # Fila 2 vacía para llegar a B3
+    ws2.append([""])  # Fila vacía para llegar a B3
     ws2.append([""] + headers)
-    
-    # Datos (a partir de B4)
+
+    # Contenido
     contenido = [
         [1, "Minimum Annual revenue $5,000,000", ">=\$200,000", ingresos, '=SI(E4>=200000,"Pass","Fail")'],
         [2, "Negative bank balance days in the last 6 months", "<=5", "No se cuenta con la información", ""],
@@ -113,36 +103,42 @@ if pdf_file is not None:
         [9, "Minimum Experian Intelliscore", "N/A", "", ""],
         [10, "Not delinquent on any Slope obligations or gone more than 15 days delinquent on any prior Slope obligations", "", "Aprobado Crédito", '=SI(E13="Aprobado Crédito","Pass","Fail")'],
     ]
-    
-    for row in contenido:
-        ws2.append([""] + row)
-    
-    # Ajustar anchos de columna
+
+    start_row = 4
+    for i, row in enumerate(contenido):
+        ws2.cell(row=start_row + i, column=2, value=row[0])
+        ws2.cell(row=start_row + i, column=3, value=row[1])
+        ws2.cell(row=start_row + i, column=4, value=row[2])
+        ws2.cell(row=start_row + i, column=5, value=row[3])
+        if isinstance(row[4], str) and row[4].startswith("=SI"):
+            ws2.cell(row=start_row + i, column=6).value = row[4]
+        else:
+            ws2.cell(row=start_row + i, column=6, value=row[4])
+
+    # Anchos
     ws2.column_dimensions["C"].width = 62
     ws2.column_dimensions["D"].width = 15.71
     ws2.column_dimensions["E"].width = 31.57
-    
-    # Estilo para cabecera
+
+    # Estilo encabezado
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
     header_font = Font(color="FFFFFF", bold=True)
     header_alignment = Alignment(horizontal="center", vertical="center")
-    
     for cell in ws2["B3":"F3"][0]:
         cell.fill = header_fill
         cell.font = header_font
         cell.alignment = header_alignment
-    
-    # Alinear el resto de celdas a la izquierda
+
+    # Alineación celdas restantes
     for row in ws2.iter_rows(min_row=4, min_col=2, max_col=6):
         for cell in row:
             cell.alignment = Alignment(horizontal="left")
-    
-    # Guardar en buffer final
+
+    # Guardar archivo final
     final_output = BytesIO()
     wb.save(final_output)
     final_output.seek(0)
-    
-    # Descargar
+
     st.success("✅ Archivo procesado con éxito")
     st.download_button(
         label="📥 Descargar Excel",
