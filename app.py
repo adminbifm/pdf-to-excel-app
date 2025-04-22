@@ -52,9 +52,9 @@ def extraer_datos(pdf_file):
     return df_final
 
 # Interfaz Streamlit
-st.title("📄 Convertidor PDF a Excel con plantilla")
+st.title("📄 Convertidor PDF a Excel - SRI PERSONA NATURAL")
 
-pdf_file = st.file_uploader("Sube tu declaración en PDF", type=["pdf"])
+pdf_file = st.file_uploader("Sube tu archivo en PDF", type=["pdf"])
 
 if pdf_file is not None:
     st.info("Procesando archivo...")
